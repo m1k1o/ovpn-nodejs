@@ -25,7 +25,9 @@
 		<button v-if="current_config" @click="Disconnect()"> DISCONNECT </button>
 		<ul>
 			<li v-for="config in configs" :key="config">
-				{{ config | title }} <button @click="Connect(config)" v-if="!current_config">CONNECT</button>
+				{{ config | title }}
+				<button @click="Connect(config)" v-if="!current_config">CONNECT</button>
+				<button @click="Reconnect(config)" v-else>RECONNECT</button>
 			</li>
 		</ul>
 		<pre>{{stdErr}}</pre>
@@ -76,6 +78,10 @@
 				let data = await rawResponse.json();
 				this.Message(data);
 			},
+			async Reconnect(serverConfig) {
+				await Disconnect();
+				await Connect(serverConfig);
+			}
 			Message(data, timeout=5000) {
 				if(this.notif) {
 					clearTimeout(this.notif.timeout)

@@ -13,9 +13,8 @@ app.use(express.static(path.join(__dirname, 'static')));
 // Control
 let squid, openvpn, config;
 function OVPN_Start(configFile) {
-	if(openvpn) {
-		throw new Error("Already running!");
-	}
+	if(openvpn) throw new Error("Already running!");
+	console.log("Starting ovpn...");
 
 	openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
 	openvpn.stdout.setEncoding('utf8');
@@ -37,17 +36,25 @@ function OVPN_Start(configFile) {
 
 	SQUID_Stop();
 }
-function OVPN_Stop() {
-	if(!openvpn) {
-		throw new Error("Not running!");
-	}
+async function OVPN_Stop() {
+	return new Promise((res, rej) => {
+		if(!openvpn) rej("Not running!");
+		console.log("Killing ovpn...");
 
-	openvpn.stdin.pause();
-	openvpn.kill();
+		openvpn.stdin.pause();
+		openvpn.kill();
 
-	openvpn = undefined;
-	io.emit("config", {
-		config: (config = false)
+		let interval = setInterval(() => {
+			if(openvpn.killed) {
+				openvpn = undefined;
+				io.emit("config", {
+					config: (config = false)
+				});
+				console.log("Killed...");
+				clearInterval(interval);
+				res();
+			}
+		}, 10);
 	});
 }
 
@@ -91,9 +98,9 @@ app.post('/connect/:config', (req, res) => {
 		});
 	}
 });
-app.post('/disconnect', (req, res) => {
+app.post('/disconnect', async (req, res) => {
 	try {
-		OVPN_Stop();
+		await OVPN_Stop();
 
 		return res.json({
 			notif: 'success',
@@ -141,6 +148,8 @@ function SQUID_Start() {
 	squid.on('close', function (code) {
 		console.log("squid exited with code " + code);
 		squid = undefined;
+
+		// On stop restart
 		SQUID_Start();
 	});
 }

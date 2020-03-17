@@ -143,7 +143,9 @@ function SQUID_Stop() {
 	if(!squid) return;
 
 	squid.stdin.pause();
-	squid.exit();
+	squid.kill();
+
+	setTimeoiut(SQUID_Start, 0);
 
 	squid = undefined;
 }

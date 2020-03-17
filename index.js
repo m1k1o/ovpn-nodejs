@@ -5,6 +5,7 @@ const io = require('socket.io')(http);
 const path = require('path');
 const fs = require('fs');
 const spawn = require('child_process').spawn;
+const configsPath = /vpn/;
 
 // Static files
 app.use(express.static(path.join(__dirname, 'static')));
@@ -16,7 +17,7 @@ function OVPN_Start(configFile) {
 		throw new Error("Already running!");
 	}
 
-	openvpn = spawn('openvpn',  ['--config', '/vpn/' + configFile]);
+	openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
 	openvpn.stdout.setEncoding('utf8');
 	openvpn.stdout.on('data', function (data) {
 		let str = data.toString();
@@ -58,7 +59,6 @@ io.on('connection', function(socket) {
 });
 
 // Get Configs
-const configsPath = path.join(__dirname, 'vpn');
 app.get('/configs', (req, res) => {
 	fs.readdir(configsPath, function (err, files) {
 		if (err) {

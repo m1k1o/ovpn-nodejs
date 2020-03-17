@@ -34,6 +34,8 @@ function OVPN_Start(configFile) {
 	io.emit("config", {
 		config: (config = configFile)
 	});
+
+	SQUID_Start();
 }
 function OVPN_Stop() {
 	if(!openvpn) {
@@ -47,6 +49,8 @@ function OVPN_Stop() {
 	io.emit("config", {
 		config: (config = false)
 	});
+
+	SQUID_Stop();
 }
 
 // Socket control
@@ -117,13 +121,23 @@ if(process.argv[3]) {
 	OVPN_Start(process.argv[3]);
 }
 
-// Start squid
-const squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
-squid.stdout.setEncoding('utf8');
-squid.stdout.on('data', function (data) {
-	let str = data.toString();
-	console.log(str);
-});
-squid.on('close', function (code) {
-	console.log("squid exited with code " + code);
-});
+// Control
+let squid;
+function SQUID_Start() {
+	// Start squid
+	squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
+	squid.stdout.setEncoding('utf8');
+	squid.stdout.on('data', function (data) {
+		let str = data.toString();
+		console.log(str);
+	});
+	squid.on('close', function (code) {
+		console.log("squid exited with code " + code);
+	});
+}
+function SQUID_Stop() {
+	squid.stdin.pause();
+	squid.kill();
+
+	squid = undefined;
+}

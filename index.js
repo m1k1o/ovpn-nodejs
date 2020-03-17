@@ -11,7 +11,7 @@ const configsPath = '/vpn/';
 app.use(express.static(path.join(__dirname, 'static')));
 
 // Control
-let openvpn, config;
+let squid, openvpn, config;
 function OVPN_Start(configFile) {
 	if(openvpn) {
 		throw new Error("Already running!");
@@ -121,8 +121,6 @@ if(process.argv[3]) {
 	OVPN_Start(process.argv[3]);
 }
 
-// Control
-let squid;
 function SQUID_Start() {
 	// Start squid
 	squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);

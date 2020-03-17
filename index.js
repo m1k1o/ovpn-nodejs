@@ -16,7 +16,7 @@ function OVPN_Start(configFile) {
 		throw new Error("Already running!");
 	}
 
-	openvpn = spawn('openvpn',  ['--config', ' /vpn/' + configFile]);
+	openvpn = spawn('openvpn',  ['--config', '/vpn/' + configFile]);
 	openvpn.stdout.setEncoding('utf8');
 	openvpn.stdout.on('data', function (data) {
 		let str = data.toString();
@@ -113,4 +113,6 @@ http.listen(port, function(){
 });
 
 // Default connection
-OVPN_Start('nl-10.protonvpn.com.udp.ovpn');
+if(process.argv[3]) {
+	OVPN_Start(process.argv[3]);
+}

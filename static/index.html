@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>OVPN dashboard</title>
+	
+	<link rel="stylesheet" type="text/css" media="screen" href="./Tabac-Sans.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="./main.css" />
+</head>
+<body>
+	<div id="app">
+		<div class="vue-notification-template vue-notification" v-if="notif" :class="notif && notif.class">
+			<div class="notification-title">{{ notif.title }}</div>
+			<div class="notification-content">{{ notif.content }}</div>
+		</div>
+		<h1>
+			Status:
+			<span v-if="current_config" class="status success">CONNECTED</span>
+			<span v-else class="status error">DISCONNECTED</span>
+			<span v-if="current_config"> to {{ current_config | title }}</span>
+		</h1>
+		<button v-if="current_config" @click="Disconnect()"> DISCONNECT </button>
+		<ul>
+			<li v-for="config in configs" :key="config">
+				{{ config | title }} <button @click="Connect(config)" v-if="!current_config">CONNECT</button>
+			</li>
+		</ul>
+		<pre>{{stdErr}}</pre>
+	</div>
+
+	<script src="./socket.io/socket.io.js"></script>
+	<script src="./vue.js"></script>
+
+	<script>
+	new Vue({
+		el: '#app',
+		data: {
+			notif: undefined,
+
+			configs: [],
+			current_config: false,
+			stdErr: ''
+		},
+		methods: {
+			async LoadConfigs() {
+				let rawResponse = await fetch('/configs');
+
+				let data = await rawResponse.json();
+				if ('notif' in data) {
+					this.Message(data);
+					return ;
+				}
+
+				this.configs = data;
+			},
+			async Connect(serverConfig) {
+				this.Loading();
+
+				let rawResponse = await fetch('/connect/'+encodeURIComponent(serverConfig), {
+					method: 'POST'
+				});
+
+				let data = await rawResponse.json();
+				this.Message(data);
+			},
+			async Disconnect() {
+				this.Loading();
+
+				let rawResponse = await fetch('/disconnect', {
+					method: 'POST'
+				});
+
+				let data = await rawResponse.json();
+				this.Message(data);
+			},
+			Message(data, timeout=5000) {
+				if(this.notif) {
+					clearTimeout(this.notif.timeout)
+				}
+
+				this.notif = {
+					class: data.notif,
+					title: data.title,
+					content: data.content,
+					timeout: setTimeout(() => this.notif = undefined, timeout)
+				}
+			},
+			Loading() {
+				this.Message({
+					notif: 'warn',
+					title: 'Loading...',
+					content: '',
+				}, 10000);
+			}
+		},
+		mounted() {
+			this.LoadConfigs();
+
+			let socket = io();
+			socket.on('config', ({ config }) => {
+				this.current_config = config;
+			});
+			let buffer = '';
+			socket.on('data', ({ data }) => {
+				this.stdErr += data;
+			});
+			socket.emit('config');
+		},
+		filters: {
+			title: function (value) {
+				return value.replace(/(ovpn|conf)$/, '');
+			}
+		}
+	})
+	</script>
+</body>
+</html>
+

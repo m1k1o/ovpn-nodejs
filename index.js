@@ -22,7 +22,7 @@ function OVPN_Start(configFile) {
 	openvpn.stdout.on('data', function (data) {
 		let str = data.toString();
 		io.emit("data", { data: str });
-		console.log(str);
+		console.log("[OVPN] " + str);
 	});
 	openvpn.on('close', function (code) {
 		openvpn = undefined;
@@ -124,18 +124,23 @@ SQUID_Start();
 
 function SQUID_Start() {
 	if(squid) return;
-	console.log("Starting...");
+	console.log("Starting squid...");
 
 	// Start squid
 	squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
 	squid.stdout.setEncoding('utf8');
 	squid.stdout.on('data', function (data) {
 		let str = data.toString();
-		console.log(str);
+		console.log("[SQUID] " + str);
+	});
+	squid.stderr.setEncoding('utf8');
+	squid.stderr.on('data', function (data) {
+		let str = data.toString();
+		console.log("[SQUID] " + str);
 	});
 	squid.on('close', function (code) {
 		console.log("squid exited with code " + code);
-
+		squid = undefined;
 		SQUID_Start();
 	});
 }
@@ -145,7 +150,6 @@ function SQUID_Stop() {
 	squid.stdin.pause();
 	squid.kill();
 
-	setTimeout(SQUID_Start, 0);
-
 	squid = undefined;
+	SQUID_Start();
 }

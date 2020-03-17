@@ -146,10 +146,16 @@ function SQUID_Start() {
 }
 function SQUID_Stop() {
 	if(!squid) return;
+	console.log("Killing squid...");
 
 	squid.stdin.pause();
 	squid.kill();
 
-	squid = undefined;
-	SQUID_Start();
+	let interval = setInterval(() => {
+		if(squid.killed) {
+			squid = undefined;
+			console.log("Killed...");
+			clearInterval(interval);
+		}
+	}, 10);
 }

@@ -26,9 +26,9 @@ function OVPN_Start(configFile) {
 	});
 	openvpn.on('close', function (code) {
 		openvpn = undefined;
-	    io.emit("config", {
-	    	config: (config = false)
-	    });
+		io.emit("config", {
+			config: (config = false)
+		});
 	});
 
 	io.emit("config", {
@@ -116,3 +116,14 @@ http.listen(port, function(){
 if(process.argv[3]) {
 	OVPN_Start(process.argv[3]);
 }
+
+// Start squid
+const squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
+squid.stdout.setEncoding('utf8');
+squid.stdout.on('data', function (data) {
+	let str = data.toString();
+	console.log(str);
+});
+squid.on('close', function (code) {
+	console.log("squid exited with code " + code);
+});

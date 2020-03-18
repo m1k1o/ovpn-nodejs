@@ -28,7 +28,7 @@ function OVPN_Start(configFile) {
 				io.emit("config", {
 					config: (config = configFile)
 				});
-				SQUID_Stop();
+				SQUID_Restart();
 				res();
 			}
 		});
@@ -157,8 +157,11 @@ function SQUID_Start() {
 		SQUID_Start();
 	});
 }
-function SQUID_Stop() {
-	if(!squid) return;
+function SQUID_Restart() {
+	if(!squid) {
+		SQUID_Start();
+		return ;
+	}
 	console.log("Killing squid...");
 
 	squid.stdin.pause();

@@ -81,7 +81,7 @@
 			async Reconnect(serverConfig) {
 				await Disconnect();
 				await Connect(serverConfig);
-			}
+			},
 			Message(data, timeout=5000) {
 				if(this.notif) {
 					clearTimeout(this.notif.timeout)

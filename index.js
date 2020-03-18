@@ -13,28 +13,32 @@ app.use(express.static(path.join(__dirname, 'static')));
 // Control
 let squid, openvpn, config;
 function OVPN_Start(configFile) {
-	if(openvpn) throw new Error("Already running!");
-	console.log("Starting ovpn...");
+	return new Promise((res, rej) => {
+		if(openvpn) rej("Already running!");
+		console.log("Starting ovpn...");
 
-	openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
-	openvpn.stdout.setEncoding('utf8');
-	openvpn.stdout.on('data', function (data) {
-		let str = data.toString();
-		io.emit("data", { data: str });
-		console.log("[OVPN] " + str);
-	});
-	openvpn.on('close', function (code) {
-		openvpn = undefined;
-		io.emit("config", {
-			config: (config = false)
+		openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
+		openvpn.stdout.setEncoding('utf8');
+		openvpn.stdout.on('data', function (data) {
+			let str = data.toString();
+			io.emit("data", { data: str });
+			console.log("[OVPN] " + str);
+
+			if(/Initialization Sequence Completed/.test(str)) {
+				io.emit("config", {
+					config: (config = configFile)
+				});
+				SQUID_Stop();
+				res();
+			}
+		});
+		openvpn.on('close', function (code) {
+			openvpn = undefined;
+			io.emit("config", {
+				config: (config = false)
+			});
 		});
 	});
-
-	io.emit("config", {
-		config: (config = configFile)
-	});
-
-	SQUID_Stop();
 }
 async function OVPN_Stop() {
 	return new Promise((res, rej) => {
@@ -81,9 +85,9 @@ app.get('/configs', (req, res) => {
 		return res.json(files);
 	});
 });
-app.post('/connect/:config', (req, res) => {
+app.post('/connect/:config', async (req, res) => {
 	try {
-		OVPN_Start(req.params.config);
+		await OVPN_Start(req.params.config);
 
 		return res.json({
 			notif: 'success',

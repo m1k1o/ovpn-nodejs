@@ -79,8 +79,8 @@
 				this.Message(data);
 			},
 			async Reconnect(serverConfig) {
-				await Disconnect();
-				await Connect(serverConfig);
+				await this.Disconnect();
+				await this.Connect(serverConfig);
 			},
 			Message(data, timeout=5000) {
 				if(this.notif) {

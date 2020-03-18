@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'static')));
 let squid, openvpn, config;
 function OVPN_Start(configFile) {
 	return new Promise((res, rej) => {
-		if(openvpn) rej("Already running!");
+		if(openvpn) return rej("Already running!");
 		console.log("Starting ovpn...");
 
 		openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
@@ -42,7 +42,7 @@ function OVPN_Start(configFile) {
 }
 async function OVPN_Stop() {
 	return new Promise((res, rej) => {
-		if(!openvpn) rej("Not running!");
+		if(!openvpn) return rej("Not running!");
 		console.log("Killing ovpn...");
 
 		openvpn.stdin.pause();

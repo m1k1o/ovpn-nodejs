@@ -46,7 +46,7 @@ async function OVPN_Stop() {
 		console.log("Killing ovpn...");
 
 		openvpn.stdin.pause();
-		openvpn.kill();
+		openvpn.kill('SIGINT');
 
 		let interval = setInterval(() => {
 			if(openvpn.killed) {

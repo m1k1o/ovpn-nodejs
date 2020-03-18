@@ -130,9 +130,6 @@ if(process.argv[3]) {
 	OVPN_Start(process.argv[3]);
 }
 
-// Start Squid
-SQUID_Start();
-
 function SQUID_Start() {
 	if(squid) return;
 	console.log("Starting squid...");

@@ -17,6 +17,9 @@ function OVPN_Start(configFile) {
 		if(openvpn) return rej("Already running!");
 		console.log("Starting ovpn...");
 
+		// Kill openvpn instance (just in case any exists)
+		spawn('killall',  ['-s', 'INT', 'openvpn']);
+
 		openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
 		openvpn.stdout.setEncoding('utf8');
 		openvpn.stdout.on('data', function (data) {
@@ -50,12 +53,12 @@ async function OVPN_Stop() {
 
 		let interval = setInterval(() => {
 			if(openvpn.killed) {
-				openvpn = undefined;
 				io.emit("config", {
 					config: (config = false)
 				});
 				console.log("Killed...");
 				clearInterval(interval);
+				openvpn = undefined;
 				res();
 			}
 		}, 10);
@@ -166,9 +169,9 @@ function SQUID_Restart() {
 
 	let interval = setInterval(() => {
 		if(squid.killed) {
-			squid = undefined;
 			console.log("Killed...");
 			clearInterval(interval);
+			squid = undefined;
 		}
 	}, 10);
 }

@@ -12,9 +12,9 @@
 </head>
 <body>
 	<div id="app">
-		<div class="vue-notification-template vue-notification" v-if="notif" :class="notif && notif.class">
-			<div class="notification-title">{{ notif.title }}</div>
-			<div class="notification-content">{{ notif.content }}</div>
+		<div class="notification" v-if="notif" :class="notif && notif.class">
+			<strong>{{ notif.title }}</strong>
+			<span>{{ notif.content }}</span>
 		</div>
 		<h1>
 			Status:
@@ -23,13 +23,14 @@
 			<span v-if="current_config"> to {{ current_config | title }}</span>
 		</h1>
 		<button v-if="current_config" @click="Disconnect()"> DISCONNECT </button>
-		<ul>
-			<li v-for="config in configs" :key="config">
-				{{ config | title }}
-				<button @click="Connect(config)" v-if="!current_config">CONNECT</button>
-				<button @click="Reconnect(config)" v-else>RECONNECT</button>
-			</li>
-		</ul>
+		<div
+			class="config"
+			v-for="config in configs"
+			:key="config"
+			@click="Connect(config)"
+			:class="config == current_config ? 'success': ''">
+			{{ config | title }}
+		</div>
 		<pre>{{stdErr}}</pre>
 	</div>
 
@@ -59,6 +60,11 @@
 				this.configs = data;
 			},
 			async Connect(serverConfig) {
+				// If connected, disconnect
+				if (this.current_config) {
+					await this.Disconnect();
+				}
+
 				this.Loading();
 
 				let rawResponse = await fetch('/connect/'+encodeURIComponent(serverConfig), {
@@ -77,10 +83,6 @@
 
 				let data = await rawResponse.json();
 				this.Message(data);
-			},
-			async Reconnect(serverConfig) {
-				await this.Disconnect();
-				await this.Connect(serverConfig);
 			},
 			Message(data, timeout=5000) {
 				if(this.notif) {

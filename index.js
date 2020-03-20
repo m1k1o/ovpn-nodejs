@@ -127,6 +127,8 @@ app.get('/configs', (req, res) => {
 			});
 		}
 
+		// Only files ending with `.conf` or `.ovpn`.
+		files = files.filter(file => /\.(ovpn|conf)$/.test(file));
 		return res.json(files);
 	});
 });

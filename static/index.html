@@ -23,14 +23,16 @@
 			<span v-if="current_config"> to {{ current_config | title }}</span>
 		</h1>
 		<button v-if="current_config" @click="Disconnect()"> DISCONNECT </button>
-		<div
-			class="config"
-			v-for="config in configs"
-			:key="config"
-			@click="Connect(config)"
-			:class="config == current_config ? 'success': ''">
-			{{ config | title }}
-		</div>
+		<ul>
+			<li
+				class="config"
+				v-for="config in configs"
+				:key="config"
+				:class="config == current_config ? 'success': ''"
+			>
+				<button @click="Connect(config)"> CONNECT </button> {{ config | title }}
+			</li>
+		</ul>
 		<pre>{{stdErr}}</pre>
 	</div>
 

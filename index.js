@@ -5,7 +5,7 @@ const io = require('socket.io')(http);
 const path = require('path');
 const fs = require('fs');
 const spawn = require('child_process').spawn;
-const configsPath = '/vpn/';
+const configsPath = './vpn/';
 
 // Static files
 app.use(express.static(path.join(__dirname, 'static')));

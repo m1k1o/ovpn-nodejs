@@ -25,8 +25,9 @@ function OVPN_Start(configFile) {
 		openvpn.stdout.on('data', function (data) {
 			let str = data.toString();
 			io.emit("data", { data: str });
-			console.log("[OVPN] " + str);
+			console.log(str);
 
+			// If successfully connected
 			if (/Initialization Sequence Completed/.test(str)) {
 				io.emit("config", {
 					config: (config = configFile)
@@ -34,13 +35,23 @@ function OVPN_Start(configFile) {
 				SQUID_Restart();
 				res();
 			}
+
+			// If error happened
+			if (/error/i.test(str)) {
+				rej(str);
+			}
 		});
 		openvpn.on('close', function (code) {
+			console.log("ovpn exited with code " + code);
 			openvpn = undefined;
 			io.emit("config", {
 				config: (config = false)
 			});
 		});
+
+		setTimeout(() => {
+			return rej("Timeout 10s expired...");
+		}, 10000);
 	});
 }
 function OVPN_Stop() {
@@ -62,6 +73,10 @@ function OVPN_Stop() {
 				res();
 			}
 		}, 10);
+
+		setTimeout(() => {
+			return rej("Timeout 10s expired...");
+		}, 10000);
 	});
 }
 function SQUID_Start() {
@@ -73,19 +88,21 @@ function SQUID_Start() {
 	squid.stdout.setEncoding('utf8');
 	squid.stdout.on('data', function (data) {
 		let str = data.toString();
-		console.log("[SQUID] " + str);
+		console.log(str);
 	});
 	squid.stderr.setEncoding('utf8');
 	squid.stderr.on('data', function (data) {
 		let str = data.toString();
-		console.log("[SQUID] " + str);
+		console.log(str);
 	});
 	squid.on('close', function (code) {
 		console.log("squid exited with code " + code);
 		squid = undefined;
 
-		// On stop restart
-		SQUID_Start();
+		// On normal stop restart
+		if (code == 0) {
+			SQUID_Start();
+		}
 	});
 }
 function SQUID_Restart() {
@@ -174,5 +191,7 @@ http.listen(port, function(){
 	// Default connection
 	if (process.argv[3]) {
 		OVPN_Start(process.argv[3]);
+	} else {
+		SQUID_Start();
 	}
 });

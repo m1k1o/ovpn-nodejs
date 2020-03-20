@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'static')));
 let squid, openvpn, config;
 function OVPN_Start(configFile) {
 	return new Promise((res, rej) => {
-		if(openvpn) return rej("Already running!");
+		if (openvpn) return rej("Already running!");
 		console.log("Starting ovpn...");
 
 		// Kill openvpn instance (just in case any exists)
@@ -27,7 +27,7 @@ function OVPN_Start(configFile) {
 			io.emit("data", { data: str });
 			console.log("[OVPN] " + str);
 
-			if(/Initialization Sequence Completed/.test(str)) {
+			if (/Initialization Sequence Completed/.test(str)) {
 				io.emit("config", {
 					config: (config = configFile)
 				});
@@ -43,16 +43,16 @@ function OVPN_Start(configFile) {
 		});
 	});
 }
-async function OVPN_Stop() {
+function OVPN_Stop() {
 	return new Promise((res, rej) => {
-		if(!openvpn) return rej("Not running!");
+		if (!openvpn) return rej("Not running!");
 		console.log("Killing ovpn...");
 
 		openvpn.stdin.pause();
 		openvpn.kill('SIGINT');
 
 		let interval = setInterval(() => {
-			if(openvpn.killed) {
+			if (openvpn.killed) {
 				io.emit("config", {
 					config: (config = false)
 				});
@@ -63,6 +63,48 @@ async function OVPN_Stop() {
 			}
 		}, 10);
 	});
+}
+function SQUID_Start() {
+	if (squid) return;
+	console.log("Starting squid...");
+
+	// Start squid
+	squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
+	squid.stdout.setEncoding('utf8');
+	squid.stdout.on('data', function (data) {
+		let str = data.toString();
+		console.log("[SQUID] " + str);
+	});
+	squid.stderr.setEncoding('utf8');
+	squid.stderr.on('data', function (data) {
+		let str = data.toString();
+		console.log("[SQUID] " + str);
+	});
+	squid.on('close', function (code) {
+		console.log("squid exited with code " + code);
+		squid = undefined;
+
+		// On stop restart
+		SQUID_Start();
+	});
+}
+function SQUID_Restart() {
+	if (!squid) {
+		SQUID_Start();
+		return ;
+	}
+	console.log("Killing squid...");
+
+	squid.stdin.pause();
+	squid.kill('SIGINT');
+
+	let interval = setInterval(() => {
+		if (squid.killed) {
+			console.log("Killed...");
+			clearInterval(interval);
+			squid = undefined;
+		}
+	}, 10);
 }
 
 // Socket control
@@ -126,52 +168,9 @@ app.post('/disconnect', async (req, res) => {
 let port = process.argv[2] || 80;
 http.listen(port, function(){
 	console.log('listening on *:' + port);
-});
 
-// Default connection
-if(process.argv[3]) {
-	OVPN_Start(process.argv[3]);
-}
-
-function SQUID_Start() {
-	if(squid) return;
-	console.log("Starting squid...");
-
-	// Start squid
-	squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
-	squid.stdout.setEncoding('utf8');
-	squid.stdout.on('data', function (data) {
-		let str = data.toString();
-		console.log("[SQUID] " + str);
-	});
-	squid.stderr.setEncoding('utf8');
-	squid.stderr.on('data', function (data) {
-		let str = data.toString();
-		console.log("[SQUID] " + str);
-	});
-	squid.on('close', function (code) {
-		console.log("squid exited with code " + code);
-		squid = undefined;
-
-		// On stop restart
-		SQUID_Start();
-	});
-}
-function SQUID_Restart() {
-	if(!squid) {
-		SQUID_Start();
-		return ;
+	// Default connection
+	if (process.argv[3]) {
+		OVPN_Start(process.argv[3]);
 	}
-	console.log("Killing squid...");
-
-	squid.stdin.pause();
-	squid.kill('SIGINT');
-
-	let interval = setInterval(() => {
-		if(squid.killed) {
-			console.log("Killed...");
-			clearInterval(interval);
-			squid = undefined;
-		}
-	}, 10);
-}
+});

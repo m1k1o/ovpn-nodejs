@@ -18,7 +18,7 @@ function OVPN_Start(configFile) {
 		console.log("Starting ovpn...");
 
 		// Kill openvpn instance (just in case any exists)
-		spawn('killall',  ['-s', 'INT', 'openvpn']);
+		spawn('killall',  ['-s', 'SIGKILL', 'openvpn']);
 
 		openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
 		openvpn.stdout.setEncoding('utf8');
@@ -60,7 +60,7 @@ function OVPN_Stop() {
 		console.log("Killing ovpn...");
 
 		openvpn.stdin.pause();
-		openvpn.kill('SIGINT');
+		openvpn.kill('SIGKILL');
 
 		let interval = setInterval(() => {
 			if (openvpn.killed) {
@@ -113,7 +113,7 @@ function SQUID_Restart() {
 	console.log("Killing squid...");
 
 	squid.stdin.pause();
-	squid.kill('SIGINT');
+	squid.kill('SIGKILL');
 
 	let interval = setInterval(() => {
 		if (squid.killed) {

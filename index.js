@@ -113,7 +113,7 @@ function SQUID_Restart() {
 	console.log("Killing squid...");
 
 	squid.stdin.pause();
-	squid.kill('SIGKILL');
+	squid.kill('SIGINT');
 
 	let interval = setInterval(() => {
 		if (squid.killed) {

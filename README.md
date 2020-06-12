@@ -18,6 +18,8 @@ services:
       - ./vpn:/vpn
 ```
 
+![screenshot](screenshot.png)
+
 ## Env
 
 ### File regex

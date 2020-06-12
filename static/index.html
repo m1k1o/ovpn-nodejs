@@ -20,7 +20,7 @@
 			Status:
 			<span v-if="current_config" class="status success">CONNECTED</span>
 			<span v-else class="status error">DISCONNECTED</span>
-			<span v-if="current_config"> to {{ current_config | title }}</span>
+			<span v-if="current_config"> to {{ current_title }}</span>
 		</h1>
 		<button v-if="current_config" @click="Disconnect()"> DISCONNECT </button>
 		<template v-if="groups.length > 0">
@@ -62,6 +62,10 @@
 			groups() {
 				const groups = this.configs.map(({ group }) => group).filter(group => group);
 				return [...new Set(groups)];
+			},
+			current_title() {
+				const config = configs.find(c => c.file === this.current_config);
+				return config && config.title;
 			}
 		},
 		methods: {

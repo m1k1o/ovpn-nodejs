@@ -144,9 +144,26 @@ app.get('/configs', (req, res) => {
 			});
 		}
 
-		// Only files ending with `.conf` or `.ovpn`.
-		files = files.filter(file => /\.(ovpn|conf)$/.test(file));
-		return res.json(files);
+		const file_regexp = (process.env.FILE_REGEXP && new RegExp(process.env.FILE_REGEXP)) || /\.(ovpn|conf)$/;
+		const file_group = (file) => {
+			if(!process.env.GROUP_REGEXP) return '';
+
+			if(m = file.match(new RegExp(process.env.GROUP_REGEXP))) {
+				return m[1];
+			}
+
+			return '';
+		};
+
+		return res.json(files
+			.filter(file =>
+				file_regexp.test(file))
+			.map(file =>
+				({
+					name: file.replace(file_regexp, ''),
+					group: file_group(file),
+					file
+				})));
 	});
 });
 app.post('/connect/:config', async (req, res) => {

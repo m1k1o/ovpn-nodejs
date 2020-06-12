@@ -23,14 +23,21 @@
 			<span v-if="current_config"> to {{ current_config | title }}</span>
 		</h1>
 		<button v-if="current_config" @click="Disconnect()"> DISCONNECT </button>
+		<template v-if="groups.length > 0">
+			Groups: <select v-model="active_group">
+				<option value="">view all</option>
+				<option v-for="group in groups" :key="group">{{ group }}</option>
+			</select>
+		</template>
 		<ul>
 			<li
 				class="config"
-				v-for="config in configs"
+				v-for="{ group, name, file: config } in configs"
 				:key="config"
 				:class="config == current_config ? 'success': ''"
+				v-if="active_group === '' || active_group === group"
 			>
-				<button @click="Connect(config)"> CONNECT </button> {{ config | title }}
+				<button @click="Connect(config)"> CONNECT </button> {{ name }}
 			</li>
 		</ul>
 		<pre>{{stdErr}}</pre>
@@ -47,7 +54,15 @@
 
 			configs: [],
 			current_config: false,
-			stdErr: ''
+			stdErr: '',
+
+			active_group: ''
+		},
+		computed: {
+			groups() {
+				const groups = this.configs.map(({ group }) => group).filter(group => group);
+				return [...new Set(groups)];
+			}
 		},
 		methods: {
 			async LoadConfigs() {
@@ -118,11 +133,6 @@
 				this.stdErr += data;
 			});
 			socket.emit('config');
-		},
-		filters: {
-			title: function (value) {
-				return value.replace(/\.(ovpn|conf)$/, '');
-			}
 		}
 	})
 	</script>

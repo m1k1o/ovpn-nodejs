@@ -20,5 +20,7 @@ VOLUME ["/vpn"]
 COPY index.js index.js
 COPY static static
 
+ENTRYPOINT [ "node", "index.js" ]
+
 EXPOSE 80
-CMD [ "node", "index.js" ]
+CMD [ "80"]

@@ -25,8 +25,9 @@ services:
 Match only files matching given RegExp. In filename will be this part omitted.
 
 ```
-FILE_REGEXP: '\.(ovpn|conf)$'
+FILE_REGEXP: '\.(ovpn|conf)$$'
 ```
+Note: Use `$$` in docker-compose for `$`.
 
 Example:
 

@@ -20,6 +20,16 @@ services:
 
 ![screenshot](screenshot.png)
 
+## Openvpn authentication
+
+If your ovpn configuration contains this line `auth-user-pass` you need to supply authentication file.
+
+Create `.auth` file in your `vpn` folder. First line will be username, second line will be your password. And then replace it in all your files:
+
+```
+find . -type f -name "*.ovpn" -print0 | xargs -0 sed -i "s/^auth-user-pass$/auth-user-pass \/vpn\/.auth/g"
+```
+
 ## Env
 
 ### File regex

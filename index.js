@@ -15,7 +15,7 @@ let squid, openvpn, config;
 function OVPN_Start(configFile) {
 	return new Promise((res, rej) => {
 		if (openvpn) return rej("Already running!");
-		console.log("Starting ovpn...");
+		console.log("Starting ovpn with config: ", configFile);
 
 		// Kill openvpn instance (just in case any exists)
 		spawn('killall',  ['-s', 'SIGKILL', 'openvpn']);
@@ -47,6 +47,7 @@ function OVPN_Start(configFile) {
 			io.emit("config", {
 				config: (config = false)
 			});
+			rej("ovpn exited with code " + code);
 		});
 
 		setTimeout(() => {
@@ -202,13 +203,26 @@ app.post('/disconnect', async (req, res) => {
 
 // Bind port
 let port = process.argv[2] || 80;
-http.listen(port, function(){
+http.listen(port, async function() {
 	console.log('listening on *:' + port);
 
 	// Default connection
 	if (process.argv[3]) {
-		OVPN_Start(process.argv[3]);
-	} else {
-		SQUID_Start();
+		max_tries = 3;
+		timeout = 1000;
+
+		while(max_tries-- > 0) {
+			try {
+				await OVPN_Start(process.argv[3]);
+				break;
+			} catch (e) {
+				await new Promise((res, rej) =>
+					setTimeout(res, timeout));
+			}
+		}
+
+		return;
 	}
+
+	SQUID_Start();
 });

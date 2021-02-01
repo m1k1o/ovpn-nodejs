@@ -18,7 +18,7 @@ function OVPN_Start(configFile) {
 		console.log("Starting ovpn with config: ", configFile);
 
 		// Kill openvpn instance (just in case any exists)
-		spawn('killall',  ['-s', 'SIGKILL', 'openvpn']);
+		spawn('pkill',  ['-SIGKILL', 'openvpn']);
 
 		openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
 		openvpn.stdout.setEncoding('utf8');

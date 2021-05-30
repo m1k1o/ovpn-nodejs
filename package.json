@@ -9,8 +9,12 @@
   },
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/m1k1o/ovpn-nodejs"
+  },
   "dependencies": {
     "express": "^4.17.1",
-    "socket.io": "^2.3.0"
+    "socket.io": "^4.1.2"
   }
 }

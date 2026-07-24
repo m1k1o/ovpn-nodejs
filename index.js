@@ -15,7 +15,7 @@ let squid, openvpn, config;
 function OVPN_Start(configFile) {
         return new Promise((res, rej) => {
                 if (openvpn) return rej("OpenVPN already running!");
-                console.log("Starting ovpn with config: ", configFile);
+                console.log("Starting OpenVPN with config: ", configFile);
 
                 // Kill openvpn instance (just in case any exists)
                 try { execSync('pkill openvpn'); } catch (e) {}
@@ -69,7 +69,7 @@ function OVPN_Start(configFile) {
                                 execSync('pkill -9 openvpn');
                         } catch (e) {
                         }
-                        return rej("Timeout 10s expired...");
+                        return rej("Timeout 10s expired while starting OpenVPN......");
                 }, 10000);
         });
 }
@@ -86,8 +86,9 @@ function OVPN_Stop() {
                 openvpn.once('close', () => {
                         clearTimeout(timer);
                         openvpn = undefined;
-                        config = false;
-                        io.emit("config", { config });
+                        io.emit("config", {
+			        config: (config = false)
+			});
                         console.log("OpenVPN killed successfully.");
                         res();
                 });
@@ -113,7 +114,7 @@ function SQUID_Start() {
                 console.log(str);
         });
         squid.on('close', function (code) {
-                console.log("squid exited with code " + code);
+                console.log("Squid exited with code " + code);
                 squid = undefined;
         });
 }
@@ -126,13 +127,15 @@ function SQUID_Restart() {
 
         const timer = setTimeout(() => {
                 try { execSync('pkill -9 squid'); } catch (e) {}
+                squid = undefined;
                 console.error("Timeout 10s expired while stopping squid...");
                 SQUID_Start();
         }, 10000);
 
         squid.once('close', () => {
                 clearTimeout(timer);
-                console.log("Old squid killed. Starting new instance...");
+                squid = undefined;
+                console.log("Squid killed...");
                 SQUID_Start();
         });
 
@@ -189,8 +192,8 @@ app.post('/connect/:config', async (req, res) => {
 
                 return res.json({
                         notif: 'success',
-                        title: 'Succesful connection!',
-                        content: 'Succesfuly connected to '+req.params.config
+                        title: 'Successful connection!',
+                        content: 'Successfully connected to '+req.params.config
                 });
         } catch(e) {
                 return res.json({

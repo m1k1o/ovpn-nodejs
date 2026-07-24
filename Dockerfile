@@ -1,4 +1,4 @@
-FROM node:14
+FROM node:20-bookworm-slim
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -9,7 +9,7 @@ RUN npm install
 # Install openvpn & squid
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update; \
-    apt-get install -y --no-install-recommends openvpn squid; \
+    apt-get install -y --no-install-recommends openvpn squid procps; \
     #
     # clean up
     apt-get clean -y; \

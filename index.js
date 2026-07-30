@@ -235,7 +235,7 @@ http.listen(port, async function() {
                                 await OVPN_Start(process.argv[3]);
                                 break;
                         } catch (e) {
-                                await new Promise((res, rej) =>
+                                await new Promise((res) =>
                                         setTimeout(res, timeout));
                         }
                 }

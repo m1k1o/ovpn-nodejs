@@ -4,7 +4,7 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 const fs = require('fs');
-const spawn = require('child_process').spawn;
+const { spawn, execSync } = require('child_process');
 const configsPath = '/vpn/';
 
 // Static files
@@ -13,216 +13,235 @@ app.use(express.static(path.join(__dirname, 'static')));
 // Control
 let squid, openvpn, config;
 function OVPN_Start(configFile) {
-	return new Promise((res, rej) => {
-		if (openvpn) return rej("Already running!");
-		console.log("Starting ovpn with config: ", configFile);
+        return new Promise((res, rej) => {
+                if (openvpn) return rej("OpenVPN already running!");
+                console.log("Starting OpenVPN with config: ", configFile);
 
-		// Kill openvpn instance (just in case any exists)
-		spawn('pkill',  ['-SIGKILL', 'openvpn']);
+                // Kill openvpn instance (just in case any exists)
+                try { execSync('pkill openvpn'); } catch (e) {}
 
-		openvpn = spawn('openvpn',  ['--config', path.join(configsPath, configFile)]);
-		openvpn.stdout.setEncoding('utf8');
-		openvpn.stdout.on('data', function (data) {
-			let str = data.toString();
-			io.emit("data", { data: str });
-			console.log(str);
+                let timer;
+                let isConnected = false;
 
-			// If successfully connected
-			if (/Initialization Sequence Completed/.test(str)) {
-				io.emit("config", {
-					config: (config = configFile)
-				});
-				SQUID_Restart();
-				res();
-			}
+                openvpn = spawn('openvpn', ['--config', path.join(configsPath, path.basename(configFile))]);
+                openvpn.stdout.setEncoding('utf8');
+                openvpn.stdout.on('data', function (data) {
+                        let str = data.toString();
+                        io.emit("data", { data: str });
+                        console.log(str);
 
-			// If error happened
-			if (/error/i.test(str)) {
-				rej(str);
-			}
-		});
-		openvpn.on('close', function (code) {
-			console.log("ovpn exited with code " + code);
-			openvpn = undefined;
-			io.emit("config", {
-				config: (config = false)
-			});
-			rej("ovpn exited with code " + code);
-		});
+                        // If successfully connected
+                        if (/Initialization Sequence Completed/.test(str)) {
+                                isConnected = true;
+                                io.emit("config", {
+                                        config: (config = configFile)
+                                });
+                                SQUID_Restart();
+                                clearTimeout(timer);
+                                res();
+                        }
 
-		setTimeout(() => {
-			return rej("Timeout 10s expired...");
-		}, 10000);
-	});
+                        // If error happened
+                        if (/error/i.test(str) && !isConnected) {
+                                clearTimeout(timer);
+                                if (openvpn) {
+                                        openvpn.kill('SIGTERM');
+                                        openvpn = undefined;
+                                }
+                                rej(str);
+                        }
+                });
+                openvpn.on('close', function (code) {
+                        console.log("OpenVPN exited with code " + code);
+                        openvpn = undefined;
+                        io.emit("config", {
+                                config: (config = false)
+                        });
+                        clearTimeout(timer);
+                        if (!isConnected) {
+                                rej("OpenVPN exited with code " + code);
+                        }
+                });
+
+                timer = setTimeout(() => {
+                        openvpn = undefined;
+                        try {
+                                execSync('pkill -9 openvpn');
+                        } catch (e) {
+                        }
+                        return rej("Timeout 10s expired while starting OpenVPN......");
+                }, 10000);
+        });
 }
 function OVPN_Stop() {
-	return new Promise((res, rej) => {
-		if (!openvpn) return rej("Not running!");
-		console.log("Killing ovpn...");
+        return new Promise((res, rej) => {
+                if (!openvpn) return rej("Not running!");
+                console.log("Killing OpenVPN...");
 
-		openvpn.stdin.pause();
-		openvpn.kill('SIGKILL');
+                const timer = setTimeout(() => {
+                        try { execSync('pkill -9 openvpn'); } catch (e) {}
+                        rej(new Error("Timeout 10s expired while stopping OpenVPN..."));
+                }, 10000);
 
-		let interval = setInterval(() => {
-			if (openvpn.killed) {
-				io.emit("config", {
-					config: (config = false)
-				});
-				console.log("Killed...");
-				clearInterval(interval);
-				openvpn = undefined;
-				res();
-			}
-		}, 10);
+                openvpn.once('close', () => {
+                        clearTimeout(timer);
+                        openvpn = undefined;
+                        io.emit("config", {
+			        config: (config = false)
+			});
+                        console.log("OpenVPN killed successfully.");
+                        res();
+                });
 
-		setTimeout(() => {
-			return rej("Timeout 10s expired...");
-		}, 10000);
-	});
+                openvpn.stdin.pause();
+                openvpn.kill('SIGTERM');
+        });
 }
 function SQUID_Start() {
-	if (squid) return;
-	console.log("Starting squid...");
+        if (squid) return;
+        console.log("Starting squid...");
 
-	// Start squid
-	squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
-	squid.stdout.setEncoding('utf8');
-	squid.stdout.on('data', function (data) {
-		let str = data.toString();
-		console.log(str);
-	});
-	squid.stderr.setEncoding('utf8');
-	squid.stderr.on('data', function (data) {
-		let str = data.toString();
-		console.log(str);
-	});
-	squid.on('close', function (code) {
-		console.log("squid exited with code " + code);
-		squid = undefined;
-
-		// On normal stop restart
-		if (code == 0) {
-			SQUID_Start();
-		}
-	});
+        // Start squid
+        squid = spawn('squid',  ['-f', '/etc/squid/squid.conf', '-NYCd', '1']);
+        squid.stdout.setEncoding('utf8');
+        squid.stdout.on('data', function (data) {
+                let str = data.toString();
+                console.log(str);
+        });
+        squid.stderr.setEncoding('utf8');
+        squid.stderr.on('data', function (data) {
+                let str = data.toString();
+                console.log(str);
+        });
+        squid.on('close', function (code) {
+                console.log("Squid exited with code " + code);
+                squid = undefined;
+        });
 }
 function SQUID_Restart() {
-	if (!squid) {
-		SQUID_Start();
-		return ;
-	}
-	console.log("Killing squid...");
+        if (!squid) {
+                SQUID_Start();
+                return ;
+        }
+        console.log("Killing squid...");
 
-	squid.stdin.pause();
-	squid.kill('SIGINT');
+        const timer = setTimeout(() => {
+                try { execSync('pkill -9 squid'); } catch (e) {}
+                squid = undefined;
+                console.error("Timeout 10s expired while stopping squid...");
+                SQUID_Start();
+        }, 10000);
 
-	let interval = setInterval(() => {
-		if (squid.killed) {
-			console.log("Killed...");
-			clearInterval(interval);
-			squid = undefined;
-		}
-	}, 10);
+        squid.once('close', () => {
+                clearTimeout(timer);
+                squid = undefined;
+                console.log("Squid killed...");
+                SQUID_Start();
+        });
+
+        squid.stdin.pause();
+        squid.kill('SIGINT');
 }
 
 // Socket control
 io.on('connection', function(socket) {
-	console.log('New connection!');
+        console.log('New connection!');
 
-	socket.on('config', () => {
-		socket.emit("config", { config });
-	});
+        socket.on('config', () => {
+                socket.emit("config", { config });
+        });
 });
 
 // Get Configs
 app.get('/configs', (req, res) => {
-	fs.readdir(configsPath, function (err, files) {
-		if (err) {
-			return res.json({
-				notif: 'warn',
-				title: 'Unable to scan directory.',
-				content: err
-			});
-		}
+        fs.readdir(configsPath, function (err, files) {
+                if (err) {
+                        return res.json({
+                                notif: 'warn',
+                                title: 'Unable to scan directory.',
+                                content: err
+                        });
+                }
 
-		const file_regexp = (process.env.FILE_REGEXP && new RegExp(process.env.FILE_REGEXP)) || /\.(ovpn|conf)$/;
-		const file_group = (file) => {
-			if(!process.env.GROUP_REGEXP) return '';
+                const file_regexp = (process.env.FILE_REGEXP && new RegExp(process.env.FILE_REGEXP)) || /\.(ovpn|conf)$/;
+                const file_group = (file) => {
+                        if(!process.env.GROUP_REGEXP) return '';
 
-			if(m = file.match(new RegExp(process.env.GROUP_REGEXP))) {
-				return m[1];
-			}
+                        const m = file.match(new RegExp(process.env.GROUP_REGEXP));
+                        if(m) {
+                                return m[1];
+                        }
 
-			return '';
-		};
+                        return '';
+                };
 
-		return res.json(files
-			.filter(file =>
-				file_regexp.test(file))
-			.map(file =>
-				({
-					name: file.replace(file_regexp, ''),
-					group: file_group(file),
-					file
-				})));
-	});
+                return res.json(files
+                        .filter(file =>
+                                file_regexp.test(file))
+                        .map(file =>
+                                ({
+                                        name: file.replace(file_regexp, ''),
+                                        group: file_group(file),
+                                        file
+                                })));
+        });
 });
 app.post('/connect/:config', async (req, res) => {
-	try {
-		await OVPN_Start(req.params.config);
+        try {
+                await OVPN_Start(req.params.config);
 
-		return res.json({
-			notif: 'success',
-			title: 'Succesful connection!',
-			content: 'Succesfuly connected to '+req.params.config
-		});
-	} catch(e) {
-		return res.json({
-			notif: 'error',
-			title: 'Error while connecting!',
-			content: e.message
-		});
-	}
+                return res.json({
+                        notif: 'success',
+                        title: 'Successful connection!',
+                        content: 'Successfully connected to '+req.params.config
+                });
+        } catch(e) {
+                return res.json({
+                        notif: 'error',
+                        title: 'Error while connecting!',
+                        content: e.message || e.toString()
+                });
+        }
 });
 app.post('/disconnect', async (req, res) => {
-	try {
-		await OVPN_Stop();
+        try {
+                await OVPN_Stop();
 
-		return res.json({
-			notif: 'success',
-			title: 'Disconnected!'
-		});
-	} catch(e) {
-		return res.json({
-			notif: 'error',
-			title: 'Error while disconnecting!',
-			content: e.message
-		});
-	}
+                return res.json({
+                        notif: 'success',
+                        title: 'Disconnected!'
+                });
+        } catch(e) {
+                return res.json({
+                        notif: 'error',
+                        title: 'Error while disconnecting!',
+                        content: e.message || e.toString()
+                });
+        }
 });
 
 // Bind port
 let port = process.argv[2] || 80;
 http.listen(port, async function() {
-	console.log('listening on *:' + port);
+        console.log('listening on *:' + port);
 
-	// Default connection
-	if (process.argv[3]) {
-		max_tries = 3;
-		timeout = 1000;
+        // Default connection
+        if (process.argv[3]) {
+                let max_tries = 3;
+                const timeout = 1000;
 
-		while(max_tries-- > 0) {
-			try {
-				await OVPN_Start(process.argv[3]);
-				break;
-			} catch (e) {
-				await new Promise((res, rej) =>
-					setTimeout(res, timeout));
-			}
-		}
+                while(max_tries-- > 0) {
+                        try {
+                                await OVPN_Start(process.argv[3]);
+                                break;
+                        } catch (e) {
+                                await new Promise((res) =>
+                                        setTimeout(res, timeout));
+                        }
+                }
 
-		return;
-	}
+                return;
+        }
 
-	SQUID_Start();
+        SQUID_Start();
 });

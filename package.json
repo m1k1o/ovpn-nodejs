@@ -14,7 +14,7 @@
     "url": "git://github.com/m1k1o/ovpn-nodejs"
   },
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^5.2.1",
     "socket.io": "^4.1.2"
   }
 }
